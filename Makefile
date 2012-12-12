@@ -150,7 +150,11 @@ USE_OPENAL=1
 endif
 
 ifndef USE_OPENAL_DLOPEN
-USE_OPENAL_DLOPEN=1
+  ifeq ($PLATFORM),mingw32)
+    USE_OPENAL_DLOPEN=1
+  else
+    USE_OPENAL_DLOPEN=0
+  endif
 endif
 
 ifndef USE_CURL
@@ -202,7 +206,7 @@ USE_LOCAL_HEADERS=1
 endif
 
 ifndef USE_RENDERER_DLOPEN
-USE_RENDERER_DLOPEN=1
+USE_RENDERER_DLOPEN=0
 endif
 
 ifndef DEBUG_CFLAGS
@@ -222,6 +226,7 @@ SDIR=$(MOUNT_DIR)/server
 RDIR=$(MOUNT_DIR)/renderer
 CMDIR=$(MOUNT_DIR)/qcommon
 SDLDIR=$(MOUNT_DIR)/sdl
+ESDIR=$(MOUNT_DIR)/es
 ASMDIR=$(MOUNT_DIR)/asm
 SYSDIR=$(MOUNT_DIR)/sys
 GDIR=$(MOUNT_DIR)/game
@@ -249,7 +254,8 @@ bin_path=$(shell which $(1) 2> /dev/null)
 ifneq ($(BUILD_CLIENT),0)
   # set PKG_CONFIG_PATH to influence this, e.g.
   # PKG_CONFIG_PATH=/opt/cross/i386-mingw32msvc/lib/pkgconfig
-  ifneq ($(call bin_path, pkg-config),)
+  #ifneq ($(call bin_path, pkg-config),)
+  ifeq ($(shell which pkg-config > /dev/null; echo $$?),0)
     CURL_CFLAGS=$(shell pkg-config --silence-errors --cflags libcurl)
     CURL_LIBS=$(shell pkg-config --silence-errors --libs libcurl)
     OPENAL_CFLAGS=$(shell pkg-config --silence-errors --cflags openal)
@@ -259,12 +265,12 @@ ifneq ($(BUILD_CLIENT),0)
     FREETYPE_CFLAGS=$(shell pkg-config --silence-errors --cflags freetype2)
   endif
   # Use sdl-config if all else fails
-  ifeq ($(SDL_CFLAGS),)
-    ifneq ($(call bin_path, sdl-config),)
-      SDL_CFLAGS=$(shell sdl-config --cflags)
-      SDL_LIBS=$(shell sdl-config --libs)
-    endif
-  endif
+  #ifeq ($(SDL_CFLAGS),)
+  #  ifneq ($(call bin_path, sdl-config),)
+  #    SDL_CFLAGS=$(shell sdl-config --cflags)
+  #    SDL_LIBS=$(shell sdl-config --libs)
+  #  endif
+  #endif
 endif
 
 # Add svn version info
@@ -295,7 +301,8 @@ LIB=lib
 INSTALL=install
 MKDIR=mkdir
 
-ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
+#ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
+ifeq ($(PLATFORM), linux)
 
   ifeq ($(ARCH),axp)
     ARCH=alpha
@@ -362,7 +369,7 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
   THREAD_LIBS=-lpthread
   LIBS=-ldl -lm
 
-  CLIENT_LIBS=$(SDL_LIBS) -lmad
+  CLIENT_LIBS = $(SDL_LIBS) -lmad
   RENDERER_LIBS = $(SDL_LIBS) -lGL
 
   ifeq ($(USE_OPENAL),1)
@@ -383,6 +390,10 @@ ifneq (,$(findstring "$(PLATFORM)", "linux" "gnu_kfreebsd" "kfreebsd-gnu"))
 
   ifeq ($(USE_MUMBLE),1)
     CLIENT_LIBS += -lrt
+  endif
+
+  ifeq ($(USE_LOCAL_HEADERS),1)
+    BASE_CFLAGS += -I$(SDLHDIR)/include
   endif
 
   ifeq ($(USE_FREETYPE),1)
@@ -1005,7 +1016,7 @@ BASE_CFLAGS += -DPRODUCT_VERSION=\\\"$(VERSION)\\\"
 BASE_CFLAGS += -Wformat=2 -Wno-format-zero-length -Wformat-security -Wno-format-nonliteral
 BASE_CFLAGS += -Wstrict-aliasing=2 -Wmissing-format-attribute
 BASE_CFLAGS += -Wdisabled-optimization
-BASE_CFLAGS += -Werror-implicit-function-declaration
+#BASE_CFLAGS += -Werror-implicit-function-declaration
 BASE_CFLAGS += -D_JK2MP
 
 ifeq ($(V),1)
@@ -1498,11 +1509,24 @@ Q3OBJ = \
   $(B)/client/fx_primitive_sound.o \
   $(B)/client/fx_primitive_tail.o \
   \
-  $(B)/client/sdl_input.o \
-  $(B)/client/sdl_snd.o \
-  \
+#  $(B)/client/sdl_input.o \
+#  $(B)/client/sdl_snd.o \
+#  \
   $(B)/client/con_log.o \
   $(B)/client/sys_main.o
+
+
+#  Q3OBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
+#             $(B)/client/es_gamma.o $(B)/client/sdl_snd.o, \
+#             $(B)/client/sdl_gamma.o $(B)/client/sdl_snd.o)
+
+  Q3OBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
+             $(B)/client/sdl_snd.o, \
+             $(B)/client/sdl_gamma.o $(B)/client/sdl_snd.o)
+  Q3OBJ += $(if $(USBDK), \
+             $(B)/client/es_input.o, \
+             $(B)/client/sdl_input.o)
+
 
 ifeq ($(PLATFORM),mingw32)
   Q3OBJ += \
@@ -1544,7 +1568,8 @@ Q3ROBJ = \
   $(B)/renderer/tr_surface.o \
   $(B)/renderer/tr_world.o \
   \
-  $(B)/renderer/sdl_gamma.o
+  $(B)/renderer/es_gamma.o
+#  $(B)/renderer/sdl_gamma.o
   
 ifneq ($(USE_RENDERER_DLOPEN), 0)
   Q3ROBJ += \
@@ -1712,18 +1737,18 @@ Q3OBJ += \
 endif
 endif
 
-ifeq ($(USE_INTERNAL_ZLIB),1)
-Q3OBJ += \
-  $(B)/client/adler32.o \
-  $(B)/client/compress.o \
-  $(B)/client/crc32.o \
-  $(B)/client/deflate.o \
-  $(B)/client/inffast.o \
-  $(B)/client/inflate.o \
-  $(B)/client/inftrees.o \
-  $(B)/client/trees.o \
-  $(B)/client/zutil.o
-endif
+#ifeq ($(USE_INTERNAL_ZLIB),1)
+#Q3OBJ += \
+#  $(B)/client/adler32.o \
+#  $(B)/client/compress.o \
+#  $(B)/client/crc32.o \
+#  $(B)/client/deflate.o \
+#  $(B)/client/inffast.o \
+#  $(B)/client/inflate.o \
+#  $(B)/client/inftrees.o \
+#  $(B)/client/trees.o \
+#  $(B)/client/zutil.o
+#endif
 
 ifeq ($(HAVE_VM_COMPILED),true)
   ifeq ($(ARCH),i386)
@@ -1795,7 +1820,12 @@ ifeq ($(USE_MUMBLE),1)
 endif
 
 Q3POBJ += \
-  $(B)/renderer/sdl_glimp.o
+  $(B)/renderer/es_glimp.o
+
+#  Q3POBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
+#              $(B)/client/es_glimp.o $(B)/client/etc1encode.o, \
+#              $(B)/client/sdl_glimp.o)
+
 
 Q3POBJ_SMP += \
   $(B)/renderersmp/sdl_glimp.o
@@ -2458,8 +2488,8 @@ $(B)/client/%.o: $(ASMDIR)/%.s
 	$(DO_AS)
 
 # k8 so inline assembler knows about SSE
-$(B)/client/%.o: $(ASMDIR)/%.c
-	$(DO_CC) -march=k8
+#$(B)/client/%.o: $(ASMDIR)/%.c
+	$(DO_CC)
 
 $(B)/client/%.o: $(CDIR)/%.c
 	$(DO_CC)
@@ -2482,6 +2512,9 @@ $(B)/client/%.o: $(ZDIR)/%.c
 $(B)/client/%.o: $(SDLDIR)/%.c
 	$(DO_CC)
 
+$(B)/client/%.o: $(ESDIR)/%.c
+	$(DO_CC)
+
 $(B)/renderersmp/%.o: $(SDLDIR)/%.c
 	$(DO_SMP_CC)
 
@@ -2499,6 +2532,9 @@ $(B)/renderer/%.o: $(CMDIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderer/%.o: $(SDLDIR)/%.c
+	$(DO_REF_CC)
+
+$(B)/renderer/%.o: $(ESDIR)/%.c
 	$(DO_REF_CC)
 
 $(B)/renderer/%.o: $(JPDIR)/%.c
@@ -2519,7 +2555,7 @@ $(B)/ded/%.o: $(ASMDIR)/%.s
 
 # k8 so inline assembler knows about SSE
 $(B)/ded/%.o: $(ASMDIR)/%.c
-	$(DO_CC) -march=k8
+	$(DO_CC)
 
 $(B)/ded/%.o: $(SDIR)/%.c
 	$(DO_DED_CC)

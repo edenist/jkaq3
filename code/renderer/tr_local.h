@@ -31,8 +31,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "qgl.h"
 #include "iqm.h"
 
-#define GL_INDEX_TYPE		GL_UNSIGNED_INT
+#ifdef VCMODS_OPENGLES
+#define GL_INDEX_TYPE           GL_UNSIGNED_SHORT
+typedef unsigned short glIndex_t;
+#else
+#define GL_INDEX_TYPE           GL_UNSIGNED_INT
 typedef unsigned int glIndex_t;
+#endif
 
 // everything that is needed by the backend needs
 // to be double buffered to allow it to run in

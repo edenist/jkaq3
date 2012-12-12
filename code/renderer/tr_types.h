@@ -338,7 +338,7 @@ typedef enum {
 } glHardwareType_t;
 
 typedef struct {
-	const char				*renderer_string;
+	char				*renderer_string;
 	const char				*vendor_string;
 	const char				*version_string;
 	const char				*extensions_string;
@@ -348,6 +348,9 @@ typedef struct {
 	float					maxTextureFilterAnisotropy;
 
 	int						colorBits, depthBits, stencilBits;
+
+	glDriverType_t			driverType;
+	glHardwareType_t		hardwareType;
 
 	qboolean				deviceSupportsGamma;
 	textureCompression_t	textureCompression;
