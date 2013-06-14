@@ -190,7 +190,7 @@ USE_INTERNAL_SPEEX=1
 endif
 
 ifndef USE_INTERNAL_ZLIB
-USE_INTERNAL_ZLIB=1
+USE_INTERNAL_ZLIB=0
 endif
 
 ifndef USE_INTERNAL_JPEG
@@ -206,7 +206,7 @@ USE_LOCAL_HEADERS=1
 endif
 
 ifndef USE_RENDERER_DLOPEN
-USE_RENDERER_DLOPEN=0
+USE_RENDERER_DLOPEN=1
 endif
 
 ifndef DEBUG_CFLAGS
@@ -265,12 +265,12 @@ ifneq ($(BUILD_CLIENT),0)
     FREETYPE_CFLAGS=$(shell pkg-config --silence-errors --cflags freetype2)
   endif
   # Use sdl-config if all else fails
-  #ifeq ($(SDL_CFLAGS),)
-  #  ifneq ($(call bin_path, sdl-config),)
-  #    SDL_CFLAGS=$(shell sdl-config --cflags)
-  #    SDL_LIBS=$(shell sdl-config --libs)
-  #  endif
-  #endif
+  ifeq ($(SDL_CFLAGS),)
+    ifneq ($(call bin_path, sdl-config),)
+      SDL_CFLAGS=$(shell sdl-config --cflags)
+      SDL_LIBS=$(shell sdl-config --libs)
+    endif
+  endif
 endif
 
 # Add svn version info
@@ -1516,13 +1516,13 @@ Q3OBJ = \
   $(B)/client/sys_main.o
 
 
-#  Q3OBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
-#             $(B)/client/es_gamma.o $(B)/client/sdl_snd.o, \
-#             $(B)/client/sdl_gamma.o $(B)/client/sdl_snd.o)
-
   Q3OBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
-             $(B)/client/sdl_snd.o, \
+             $(B)/client/es_gamma.o $(B)/client/sdl_snd.o, \
              $(B)/client/sdl_gamma.o $(B)/client/sdl_snd.o)
+
+#  Q3OBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
+#             $(B)/client/sdl_snd.o, \
+#             $(B)/client/sdl_gamma.o $(B)/client/sdl_snd.o)
   Q3OBJ += $(if $(USBDK), \
              $(B)/client/es_input.o, \
              $(B)/client/sdl_input.o)
@@ -1819,12 +1819,12 @@ ifeq ($(USE_MUMBLE),1)
     $(B)/client/libmumblelink.o
 endif
 
-Q3POBJ += \
-  $(B)/renderer/es_glimp.o
+#Q3POBJ += \
+#  $(B)/renderer/es_glimp.o
 
-#  Q3POBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
-#              $(B)/client/es_glimp.o $(B)/client/etc1encode.o, \
-#              $(B)/client/sdl_glimp.o)
+  Q3POBJ += $(if $(or $(findstring arm,$(ARCH)), $(USBDK)), \
+              $(B)/client/es_glimp.o $(B)/client/etc1encode.o, \
+              $(B)/client/sdl_glimp.o)
 
 
 Q3POBJ_SMP += \
